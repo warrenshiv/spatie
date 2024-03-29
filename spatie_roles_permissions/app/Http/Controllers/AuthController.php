@@ -17,6 +17,8 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request)
     {
+        $this -> authorize('create-delete-users');
+        
         $validatedData = $request->validated();
 
         // Create a new User
