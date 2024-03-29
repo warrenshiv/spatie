@@ -4,47 +4,59 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Traits\HttpResponses;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-// use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\LoginUserRequest;
+
 
 class AuthController extends Controller
 {
+    use HttpResponses;
 
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
-        $request->validate([
-            'name' => ['required', 'max:255'],
-            'email' => ['required', 'email', 'unique:users'],
-            'role_id' => ['required'],
-            'password' => ['required', 'min:8'],
-            'password_confirmed' => ['required', 'same:password']
-        ]);
+        $validatedData = $request->validated();
 
+        // Create a new User
         $user = User::create([
-            'name' => $request['name'],
-            'email' => $request['email'],
-            'role_id' => $request['role_id'],
-            'password' => Hash::make($request['password'])
+            'name' => $validatedData['name'],
+            'email' => $validatedData['email'],
+            'role_id' => $validatedData['role_id'],
+            'password' => Hash::make($validatedData['password'])
         ]);
 
-        return response()->json($user, 201);
+        // Return succes response
+        return $this->success([
+            'user' => $user,
+            'access_token' => $user->createToken('API Token')->plainTextToken
+        ]);
     }
-
-    public function login(Request $request)
+    public function login(LoginUserRequest $request)
     {
-        if (!auth()->attempt($request->only('email', 'password'))) {
-            return response()->json([
-                'message' => 'Invalid login details'
-            ], 401);
+        $validatedData = $request->validated();
+
+        // Check if the input is a phone number
+        if ($this->isPhoneNumber($validatedData['username'])) {
+            $user = User::where('phone_number', $validatedData['username'])->first();
+        } else {
+            $user = User::where('email', $validatedData['username'])->first();
         }
 
-        $user = User::where('email', $request['email'])->firstOrFail();
+        if (!$user || !Auth::attempt(['email' => $user->email, 'password' => $validatedData['password']])) {
+            return $this->error('', 'Invalid credentials', 401);
+        }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer'
+        return $this->success([
+            'user' => $user,
+            'access_token' => $user->createToken('API Token')->plainTextToken
         ]);
+    }
+
+    function isPhoneNumber($value)
+    {
+        // Check if $value is a valid numeric string
+        return ctype_digit($value);
     }
 }
