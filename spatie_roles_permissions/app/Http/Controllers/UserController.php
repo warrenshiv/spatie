@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Traits\HttpResponses;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
+    use HttpResponses;
+    
     /**
      * Display a listing of the resource.
      */
@@ -57,8 +61,20 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy($id)
     {
-        //
+        $this -> authorize('create-delete-users');
+        
+        $user = User::find($id);
+
+        if (!$user) {
+            return $this->error('', 'User not found', 404);
+        }
+
+        $user->delete();
+
+        return $this->success([
+            'message' => 'User deleted successfully'
+        ]);
     }
 }

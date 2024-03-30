@@ -61,4 +61,17 @@ class AuthController extends Controller
         // Check if $value is a valid numeric string
         return ctype_digit($value);
     }
+
+    public function logout()
+    {
+        if (Auth::check()) {
+            Auth::user()->currentAccessToken()->delete();
+            return $this->success([
+                'message' => 'You have successfully been logged out and your token has been removed'
+            ]);
+        } else {
+            // Handle cases where the user is not authenticated
+            return $this->error('', 'User not authenticated', 401);
+        }
+    }
 }
